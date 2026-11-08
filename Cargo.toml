@@ -194,3 +194,16 @@ opt-level = 2
 opt-level = 2
 [profile.dev.package.regex-syntax]
 opt-level = 2
+
+# Test build: route A for loom#260 (streamed stdin into nested Docker on
+# Daytona). Points every sandbox-driver crate, including the copies petri and
+# pebble pull in, at the orilloai fork.
+[patch."https://github.com/lithoscomputer/sandbox-driver"]
+sandbox-driver = { git = "https://github.com/orilloai/sandbox-driver", rev = "3801311eab6108d15137906dee7dc33cd0678d98" }
+sandbox-driver-protocol = { git = "https://github.com/orilloai/sandbox-driver", rev = "3801311eab6108d15137906dee7dc33cd0678d98" }
+sandbox-driver-host = { git = "https://github.com/orilloai/sandbox-driver", rev = "3801311eab6108d15137906dee7dc33cd0678d98" }
+sandbox-driver-docker = { git = "https://github.com/orilloai/sandbox-driver", rev = "3801311eab6108d15137906dee7dc33cd0678d98" }
+sandbox-driver-docker-config = { git = "https://github.com/orilloai/sandbox-driver", rev = "3801311eab6108d15137906dee7dc33cd0678d98" }
+sandbox-driver-daytona = { git = "https://github.com/orilloai/sandbox-driver", rev = "3801311eab6108d15137906dee7dc33cd0678d98" }
+sandbox-driver-daytona-config = { git = "https://github.com/orilloai/sandbox-driver", rev = "3801311eab6108d15137906dee7dc33cd0678d98" }
+sandbox-driver-testing = { git = "https://github.com/orilloai/sandbox-driver", rev = "3801311eab6108d15137906dee7dc33cd0678d98" }
