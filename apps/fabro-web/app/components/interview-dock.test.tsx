@@ -80,6 +80,8 @@ describe("InterviewDock", () => {
       const body = copy.item.record?.body;
       if (body?.event === "step.finished" && body.outcome?.output && JSON.stringify(copy).includes('"name":"start"')) {
         body.outcome.output.stdout = "## CR-2 card\n\n**Recommendation:** 1, accept.";
+        // Only a command stage is a card (XR-2)
+        (copy.item as { subject?: { node?: { kind?: string } } }).subject!.node!.kind = "attractor/command";
       }
       return copy;
     });

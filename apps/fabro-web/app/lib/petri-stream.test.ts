@@ -187,13 +187,14 @@ describe("a gate's card (loom#258)", () => {
   const CARD = "## CR-2\n\n**What the reviewer found** (the reviewer's words):\n> text";
 
   /** The gate fixture, with the stage before the gate (`start`) printing `stdout`. */
-  function withStartOutput(stdout: string | undefined): RunStreamItem[] {
+  function withStartOutput(stdout: string | undefined, nodeKind = "attractor/command"): RunStreamItem[] {
     return gate.stream.map((item) => {
       if (petriEventName(item) !== "step.finished" || petriStageLabel(item) !== "start@1") return item;
       const copy = structuredClone(item) as RunStreamItem & {
-        item: { record: { body: { outcome: { output: Record<string, unknown> } } } };
+        item: { record: { body: { outcome: { output: Record<string, unknown> } } }; subject: { node: { kind: string } } };
       };
       if (stdout !== undefined) copy.item.record.body.outcome.output.stdout = stdout;
+      copy.item.subject.node.kind = nodeKind;
       return copy;
     });
   }
@@ -203,6 +204,12 @@ describe("a gate's card (loom#258)", () => {
       stage: "start@1",
       text: CARD,
     });
+  });
+
+  test("only a command stage is a card: a stage of any other kind that fed the gate shows nothing", () => {
+    for (const kind of ["attractor/human", "attractor/agent", "attractor/stage"]) {
+      expect(precedingStageOutput(withStartOutput(CARD, kind), "gate@1")).toBeNull();
+    }
   });
 
   test("a stage that wrote nothing, an unknown gate, or a stage with no edge to the gate gives no card", () => {

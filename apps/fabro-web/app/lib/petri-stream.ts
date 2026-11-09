@@ -355,6 +355,8 @@ export function precedingStageOutput(
     if (!label || label === gateLabel) continue;
     const edges = getObject(getObject(subjectNode(item), "meta"), "edges") ?? {};
     if (!Object.values(edges).some((edge) => getString(edge, "to") === gateName)) continue;
+    // Only a command stage is a card: a gate's answer or an agent's reply is someone else's text, and is not shown above a gate as markdown.
+    if (getString(subjectNode(item), "kind") !== "attractor/command") return null;
     const text = finishedStepText(item);
     return text ? { stage: label, text } : null;
   }
