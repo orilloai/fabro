@@ -92,9 +92,11 @@ import {
   itemsForStage,
   parallelOverviewFromProjection,
   parsePetriInterviewPairs,
+  precedingStageOutput,
   reducerTranscriptFromProjection,
   type CommandOutputLoss,
   type DebugRow,
+  type PrecedingStageOutput,
 } from "../lib/petri-stream";
 import {
   useRun,
@@ -473,6 +475,8 @@ function debugItemPayload(item: DebugRow): EventDisplayPayload {
 /** What the Petri renderers show for one stage, derived once per stage. */
 interface PetriStageViews {
   pairs: HumanInterviewPair[];
+  /** A gate's card: the output of the stage before it (loom#258). */
+  card: PrecedingStageOutput | null;
   edge: EdgeSelection | null;
   overview: ParallelOverview;
   reducer: ReducerTranscript | null;
@@ -2149,7 +2153,7 @@ function StageActivityBody({
             turn={commandTurn}
           />
         ) : renderer === "human" ? (
-          <HumanQA stage={selectedStage} pairs={petri.pairs} />
+          <HumanQA stage={selectedStage} pairs={petri.pairs} card={petri.card} />
         ) : renderer === "conditional" ? (
           <ConditionalDecision
             stage={selectedStage}
@@ -2247,11 +2251,12 @@ function RunStageActivityStage({
   const petriViews = useMemo<PetriStageViews>(
     () => ({
       pairs: parsePetriInterviewPairs(stageItems),
+      card: renderer === "human" ? precedingStageOutput(stream, selectedStageId) : null,
       edge: findPetriEdgeForStage(stream, selectedStageId),
       overview: parallelOverviewFromProjection(stageProjection),
       reducer: reducerTranscriptFromProjection(stageProjection),
     }),
-    [stream, stageItems, stageProjection, selectedStageId],
+    [stream, stageItems, stageProjection, selectedStageId, renderer],
   );
   // The Context tab surfaces the workflow's deliberate per-visit outputs. It
   // only exists when the stage completed and actually wrote something.

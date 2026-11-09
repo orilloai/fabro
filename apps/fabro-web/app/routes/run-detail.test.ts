@@ -72,6 +72,7 @@ mock.module("../lib/queries", () => ({
     isLoading: false,
   }),
   useRunQuestions: questionQueryMock,
+  useRunStream: () => ({ data: undefined }),
   useRunPullRequest: () => ({
     data:      null,
     isLoading: false,

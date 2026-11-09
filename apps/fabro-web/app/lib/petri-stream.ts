@@ -312,6 +312,55 @@ export function parsePetriInterviewPairs(stream: PetriStream): HumanInterviewPai
   return Array.from(pairs.values()).sort((a, b) => a.question.ts.localeCompare(b.question.ts));
 }
 
+/** What a gate shows above its question: the output of the stage before it. */
+export interface PrecedingStageOutput {
+  /** The stage label (`node@visit`) of the stage that produced it. */
+  stage: string;
+  text: string;
+}
+
+/** A finished step's text: a command's stdout, a gate's answer, or an agent's response. */
+function finishedStepText(item: RunStreamItem): string | undefined {
+  const outcome = getObject(petriBody(item), "outcome");
+  const output = getObject(outcome, "output");
+  const text =
+    getString(output, "stdout") ??
+    getString(output, "text") ??
+    getString(getObject(outcome, "context_updates"), "last_response");
+  return text?.trim() ? text : undefined;
+}
+
+/**
+ * The output of the stage that ran just before a gate, which Fabro's docs
+ * say a gate shows: the last final `step.finished`, in the gate's execution
+ * and before the gate's first item, of a stage whose node has an edge to the
+ * gate (EVENTS.md "Source metadata"). Null when there is none, or when that
+ * stage wrote nothing.
+ */
+export function precedingStageOutput(
+  stream: PetriStream,
+  gateLabel: string,
+): PrecedingStageOutput | null {
+  const start = stream.findIndex((item) => petriStageLabel(item) === gateLabel);
+  if (start < 0) return null;
+  const gate = stream[start]!;
+  const gateName = getString(subjectNode(gate), "name");
+  const execution = getNumber(getObject(gate.item, "context"), "execution");
+  for (let index = start - 1; index >= 0; index -= 1) {
+    const item = stream[index]!;
+    if (petriEventName(item) !== "step.finished") continue;
+    if (getBool(derived(item), "final") === false) continue;
+    if (getNumber(getObject(item.item, "context"), "execution") !== execution) continue;
+    const label = petriStageLabel(item);
+    if (!label || label === gateLabel) continue;
+    const edges = getObject(getObject(subjectNode(item), "meta"), "edges") ?? {};
+    if (!Object.values(edges).some((edge) => getString(edge, "to") === gateName)) continue;
+    const text = finishedStepText(item);
+    return text ? { stage: label, text } : null;
+  }
+  return null;
+}
+
 // ── Run phases ──────────────────────────────────────────────────────────
 
 const PHASE_LABEL: Record<RunPhaseKind, string> = {

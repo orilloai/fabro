@@ -8,6 +8,8 @@ import {
 } from "@heroicons/react/20/solid";
 
 import type { Stage } from "../stage-sidebar";
+import { GateCard } from "../gate-card";
+import type { PrecedingStageOutput } from "../../lib/petri-stream";
 import {
   ReviewTargetQuestion,
   safeReviewTarget,
@@ -144,9 +146,11 @@ function PendingBlock({ stageActive }: { stageActive: boolean }) {
 function QuestionBlock({
   pair,
   stageActive,
+  card,
 }: {
   pair: HumanInterviewPair;
   stageActive: boolean;
+  card: PrecedingStageOutput | null;
 }) {
   const { question, resolution } = pair;
   const reviewTarget = safeReviewTarget(question.reviewTarget);
@@ -168,6 +172,8 @@ function QuestionBlock({
           </span>
         </Tooltip>
       </header>
+
+      {card && <GateCard output={card} />}
 
       <div className="rounded-lg bg-panel p-4 outline-1 -outline-offset-1 outline-line">
         {reviewTarget ? (
@@ -227,10 +233,13 @@ function QuestionBlock({
 export function HumanQA({
   stage,
   pairs,
+  card = null,
 }: {
   stage: Stage;
   /** The stage's questions and their answers (`parsePetriInterviewPairs`). */
   pairs: HumanInterviewPair[];
+  /** The output of the stage before the gate (`precedingStageOutput`), shown above its first question. */
+  card?: PrecedingStageOutput | null;
 }) {
   const stageActive = ACTIVE_STAGE_STATES.has(stage.status);
   const pendingCount = pairs.filter((p) => p.resolution == null).length;
@@ -255,9 +264,13 @@ export function HumanQA({
         </p>
       ) : (
         <ol className="space-y-6">
-          {pairs.map((pair) => (
+          {pairs.map((pair, index) => (
             <li key={pair.question.questionId}>
-              <QuestionBlock pair={pair} stageActive={stageActive} />
+              <QuestionBlock
+                pair={pair}
+                stageActive={stageActive}
+                card={index === 0 ? card : null}
+              />
             </li>
           ))}
         </ol>

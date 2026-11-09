@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import TestRenderer, { act } from "react-test-renderer";
-import { SWRConfig } from "swr";
+import { SWRConfig, unstable_serialize } from "swr";
 import {
   type ApiQuestion,
   QuestionType,
@@ -14,6 +14,8 @@ import {
 } from "./interview-dock";
 import { displayLabel } from "./interview-label";
 import { generatedAxios } from "../lib/api-client";
+import { loadPetriFixture } from "../lib/petri-fixtures";
+import { queryKeys } from "../lib/query-keys";
 
 function render(node: React.ReactNode): TestRenderer.ReactTestRenderer {
   let tree: TestRenderer.ReactTestRenderer | undefined;
@@ -69,6 +71,34 @@ function makeQuestion(overrides: Partial<ApiQuestion> = {}): ApiQuestion {
 }
 
 describe("InterviewDock", () => {
+  test("shows the output of the stage before the gate, as markdown, above the question (loom#258)", () => {
+    const fixture = loadPetriFixture("gate");
+    const stream = fixture.stream.map((item) => {
+      const copy = structuredClone(item) as typeof item & {
+        item: { record?: { body?: { event?: string; outcome?: { output?: Record<string, unknown> } } } };
+      };
+      const body = copy.item.record?.body;
+      if (body?.event === "step.finished" && body.outcome?.output && JSON.stringify(copy).includes('"name":"start"')) {
+        body.outcome.output.stdout = "## CR-2 card\n\n**Recommendation:** 1, accept.";
+      }
+      return copy;
+    });
+    const cache = new Map([[unstable_serialize(queryKeys.runs.stream("run-1")), { data: stream }]]);
+    let tree: TestRenderer.ReactTestRenderer | undefined;
+    act(() => {
+      tree = TestRenderer.create(
+        <SWRConfig value={{ provider: () => cache as never, dedupingInterval: 60_000, revalidateOnMount: false }}>
+          <InterviewDock runId="run-1" questions={[makeQuestion({ stage: "gate@1", text: "Go?" })]} />
+        </SWRConfig>,
+      );
+    });
+    const card = tree!.root.findByProps({ "data-testid": "gate-card" });
+    expect(instanceText(card)).toContain("From start@1");
+    const html = card.find((node) => node.props.dangerouslySetInnerHTML !== undefined).props.dangerouslySetInnerHTML.__html;
+    expect(html).toContain("<h2>CR-2 card</h2>");
+    expect(html).toContain("<strong>Recommendation:</strong>");
+  });
+
   test("renders question text and stage in the header", () => {
     const tree = render(
       <InterviewDock runId="run-1" questions={[makeQuestion()]} />,

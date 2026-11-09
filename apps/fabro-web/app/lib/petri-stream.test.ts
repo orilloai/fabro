@@ -18,6 +18,7 @@ import {
   matchedCondition,
   outputLossNote,
   parsePetriInterviewPairs,
+  precedingStageOutput,
   petriEventName,
   petriStageLabel,
   platformRecordKind,
@@ -179,6 +180,37 @@ describe("questions", () => {
     const [pair] = parsePetriInterviewPairs([question(value)]);
     expect(pair.question.reviewTarget).toBeNull();
     expect(pair.question.question).toBe("Review the document.");
+  });
+});
+
+describe("a gate's card (loom#258)", () => {
+  const CARD = "## CR-2\n\n**What the reviewer found** (the reviewer's words):\n> text";
+
+  /** The gate fixture, with the stage before the gate (`start`) printing `stdout`. */
+  function withStartOutput(stdout: string | undefined): RunStreamItem[] {
+    return gate.stream.map((item) => {
+      if (petriEventName(item) !== "step.finished" || petriStageLabel(item) !== "start@1") return item;
+      const copy = structuredClone(item) as RunStreamItem & {
+        item: { record: { body: { outcome: { output: Record<string, unknown> } } } };
+      };
+      if (stdout !== undefined) copy.item.record.body.outcome.output.stdout = stdout;
+      return copy;
+    });
+  }
+
+  test("the gate shows the output of the stage that fed it", () => {
+    expect(precedingStageOutput(withStartOutput(CARD), "gate@1")).toEqual({
+      stage: "start@1",
+      text: CARD,
+    });
+  });
+
+  test("a stage that wrote nothing, an unknown gate, or a stage with no edge to the gate gives no card", () => {
+    expect(precedingStageOutput(gate.stream, "gate@1")).toBeNull();
+    expect(precedingStageOutput(withStartOutput("  \n"), "gate@1")).toBeNull();
+    expect(precedingStageOutput(withStartOutput(CARD), "nope@1")).toBeNull();
+    // `no` runs after the gate and feeds `exit`, not the gate.
+    expect(precedingStageOutput(withStartOutput(CARD), "exit@1")).toBeNull();
   });
 });
 

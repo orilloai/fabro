@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ArrowRightIcon,
   CheckIcon,
@@ -15,6 +15,9 @@ import {
   type SubmitInterviewAnswerArg,
 } from "../lib/mutations";
 import { ApiError } from "../lib/api-client";
+import { precedingStageOutput } from "../lib/petri-stream";
+import { useRunStream } from "../lib/queries";
+import { GateCard } from "./gate-card";
 import { displayLabel } from "./interview-label";
 import {
   ReviewTargetQuestion,
@@ -90,6 +93,11 @@ function InterviewQuestionDock({
   const [collapsed, setCollapsed] = useState(false);
   const submitting = submitMutation.isMutating;
   const reviewTarget = safeReviewTarget(question.review_target);
+  const streamQuery = useRunStream(runId);
+  const card = useMemo(
+    () => (streamQuery.data ? precedingStageOutput(streamQuery.data, question.stage) : null),
+    [streamQuery.data, question.stage],
+  );
 
   const submit = useCallback(
     async (answer: SubmitInterviewAnswer) => {
@@ -128,6 +136,7 @@ function InterviewQuestionDock({
       }
       body={
         <>
+          {card && <GateCard output={card} />}
           {reviewTarget ? (
             <ReviewTargetQuestion
               target={reviewTarget}
